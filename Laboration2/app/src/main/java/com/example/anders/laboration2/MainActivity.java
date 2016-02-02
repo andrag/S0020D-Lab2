@@ -39,7 +39,9 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 
 /* This assignment is almost done. This is a copy of the lab2 from users/anders/androidprojectsomething.../laboration2
@@ -76,11 +78,13 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     //Data structures
     private String contactPhotoUri;//Uri to a specific contact?
     private String contactName;//This might just be instead of LOOKUP_ID. This should maybe not be used then.
+    private String namesTaggedInThisPhoto;
     private String filename = "contact_tags.txt";// For storing tags
-    private HashMap<String, String> contactTags; //Temporary memory for storing new tags
+    //private HashMap<String, String> contactTags; //Key = photo uri, Value = names that are tagged in the photo. Read from file at start.
+    private ConcurrentSkipListMap<String, String> contactTags;
     private HashMap<String, Uri> contactUrisFromName; //Key = Name, Value = Contact uri. Maybe skip this, go for LOOKUP_ID instead.
     private String contactsTagString;// All tags stored in a string as a temporary memory.
-    //The contactsTagString is for writing to file. Maybe something more.
+    //The contactsTagString is for writing to file. We need a function that updates this when it is time to write to file.
 
     //Tag list
     private ListView listview;
@@ -113,7 +117,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
 
     //This button starts an activity that sends us to the GridViewActivity and waits for a result
-    public void clickButton1(View view){
+    public void clickGalleryButton(View view){
         //Start the gridView activity
         Intent intent = new Intent(this, GridViewActivity.class);
         startActivityForResult(intent, PICK_THUMBNAIL_REQUEST);
@@ -121,7 +125,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
 
     //This button starts the contact picking activity.
-    public void clickButton2(View view){
+    public void clickTagButton(View view){
         //ContactsContract..
         //ContactsContract.CommonDataKinds.Phone.CONTENT_URI
         //ContactsContract.Contacts.CONTENT_URI
@@ -131,11 +135,14 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     }
 
 
-    public void clickButton3(View view){
+    public void clickShowTags(View view){
         //Display the name of the selected uri, contactPhotoUri should contain it.
-        System.out.println("You clicked button 3.");
+        System.out.println("You clicked showTagsButton.");
+
+        //Check if the datastructure, containing photo uris connected to tag names (contactTags), contains the uri to this photo
+        //If so, display the tag names for this photo
         if(contactTags.containsKey(contactPhotoUri.toString())){
-            String name = contactTags.get(contactPhotoUri.toString());
+            String name = contactTags.get(contactPhotoUri.toString()); //Name is null. Nulls are stored as value in contactTags at some point.
             System.out.println("The name string is: " + name);
             Toast.makeText(getBaseContext(), name, Toast.LENGTH_LONG).show();
             updateTaggedContacts(name);
@@ -143,10 +150,11 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         else Toast.makeText(getBaseContext(), "No tag yet.", Toast.LENGTH_LONG).show();
     }
 
+    //This method tries to split a string that doesn't exist.
     private void updateTaggedContacts(String name){
         //String name format: ,name,name,name....etc Might need to trim the first ","
         System.out.println("Trying to update the listview with tags. The name string is: "+name);
-        String[] names = name.split(",");
+        String[] names = name.split(",");//This throws a nullpointer exception when no file exists to read from from the start!
         taggedContacts.clear();
         for(String s : names){
             taggedContacts.add(s);
@@ -284,23 +292,28 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
          */
         else if (requestCode == PICK_CONTACT_REQUEST && resultCode == RESULT_OK && data != null) {
+            //Here, a photo is to be tagged if the contact is not already tagged in the photo
+
 
             //First test to get the info of the picked contact: 2015-10-28
             System.out.println("The data.getData back from contactspicker is of type:" + data.getData().getPath());
-            Uri contactUri = data.getData();
+            Uri contactUri = data.getData();//This is a correct uri
 
+
+            //The null as second and third arg is inefficient. Returns all columns resp all rows. You get the whole table.
             Cursor cursor = getContentResolver().query(contactUri, null, null, null, null);
-            cursor.moveToFirst();
-            int column = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);
+            cursor.moveToFirst();//Move to first row?
+            int column = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);//Select the name column
+            contactName = cursor.getString(column);//Get the name
 
-            //This is what i tried yesterday.
+
+            //The following code is old tries to query contacts info
+
+            //This is what i tried yesterday. (Like ages ago...)
             //Test code for querying the contacts email using its id
             // get the contact id from the Uri
-            String id = contactUri.getLastPathSegment();//This line gets the contacts identifier!
+           /* String id = contactUri.getLastPathSegment();//This line gets the contacts identifier!
             Toast.makeText(getBaseContext(),"Contacts id is: "+id, Toast.LENGTH_LONG).show();
-
-
-            //Have probably made a test with email here:
 
             // query for everything email.
            cursor = getContentResolver().query(
@@ -321,7 +334,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
             if(!storeContactsUriFromName.containsKey(contactName)){//Nullpointer at storeContactsUriFromName. Might be contactName = null? contactName is never assigned to anything! I beleive.
                 storeContactsUriFromName.put(contactName, contactUri.toString());
                 nameUriPairs += ","+contactName+","+contactUri;
-            }
+            }*/
 
             if(!isDuplicate(contactPhotoUri.toString(), contactName)){
                 writeToFile();
@@ -334,8 +347,22 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     }
 
 
+    //Can this be done by checking contactTags HashMap instead of contactsTagString? Made a try :)
     private boolean isDuplicate(String uri, String name){
         boolean response = false;
+        if(contactTags.containsKey(uri)){
+            String namesToExamine = contactTags.get(uri);
+            String[] taggedInImage = namesToExamine.split(",");
+            for(String s : taggedInImage){
+                if(s.equals(name)){
+                    return true;
+                }
+            }
+        }
+
+        return false;
+
+        /*
         if(contactsTagString.contains(uri)){
             String namesToExamine = contactTags.get(uri);
             System.out.println("Checks for duplicate. String with names are: " + namesToExamine+" and the name to check for is: "+name);
@@ -348,27 +375,42 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
             }
         }
 
-        return response;
+        return response;*/
     }
+
+
 
     private void writeToFile(){
 
         //First put the tag in the temporary memory
         if(contactTags.containsKey(contactPhotoUri.toString())){
-            String namesTaggedInThisPhoto = contactTags.get(contactPhotoUri);
+            namesTaggedInThisPhoto = contactTags.get(contactPhotoUri);
             namesTaggedInThisPhoto += ","+contactName;//Is contact name null from the start??? This might be the source of null among tags.
-            contactName = namesTaggedInThisPhoto; //This is for adding several names to one photo.
+
+            //Outcommented 2016-02-02 since it might be unnecessary
+            //contactName = namesTaggedInThisPhoto; //This is for adding several names to one photo. Isn't this unnecessary?
+
+            //Remove the old string of tags for the photo before adding a new one
+            contactTags.remove(contactPhotoUri);
+        }
+        else {
+            namesTaggedInThisPhoto = contactName;
         }
 
 
-        contactTags.put(contactPhotoUri.toString(), contactName);//This might be the source of the nulls among the tags?
-        contactsTagString += ":"+contactPhotoUri+":"+contactName;
+        contactTags.put(contactPhotoUri.toString(), namesTaggedInThisPhoto);//This might be the source of the nulls among the tags? No, but another error. This makes duplicates of names appear since we add the entire string of names again for every time we add a new tag.
+
+
+        //This is wrong. contactsTagString should only be concatenated directly from looping the hash table. This adds to it wrongly
+        //contactsTagString += ":"+contactPhotoUri+":"+contactName;//This is concatenating stuff all the time
+
+        updateTagsString();
 
         try{
            //Then save to textfile
             FileOutputStream fileout = openFileOutput(filename, MODE_PRIVATE);
             OutputStreamWriter writer = new OutputStreamWriter(fileout);
-            writer.write(contactsTagString+"//¤"+nameUriPairs);
+            writer.write(contactsTagString);//+"//¤"+nameUriPairs);
             writer.close();
 
             //Toast.makeText(getBaseContext(), "Tag saved in file.", Toast.LENGTH_LONG).show();
@@ -379,13 +421,28 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     }
 
 
+    //This method updates the string to write the file after a tag is made
+    private void updateTagsString(){
+        System.out.println("Updating contactsTagString with the new iteration method.");
+        String key;
+        String value;
+        contactsTagString = "";
+        Iterator<String> iterator = contactTags.keySet().iterator();
+        while(iterator.hasNext()){
+            key = iterator.next();
+            value = contactTags.get(key);//Will this cause synch errors since trying to access while iterating??? Probably work since its only reading.
+            contactsTagString += ":" + key + ":"+value;
+        }
+    }
+
+
 
     //Might need a check if the file exists before loading it.
     private void loadFile(){
         final int READ_BLOCK_SIZE = 100;//Check what this is for
-        contactTags = new HashMap<String, String>();
-        storeContactsUriFromName = new HashMap<String, String>();//For holding uri:s to images on the external storage. Maybe weak if images are moved...
-        nameUriPairs = "";
+        contactTags = new ConcurrentSkipListMap<String, String>();
+        //storeContactsUriFromName = new HashMap<String, String>();//For holding uri:s to images on the external storage. Maybe weak if images are moved...
+        //nameUriPairs = "";
         contactsTagString = "";
 
         //Problem to solve: If this is first time using the app, create an empty file. But only the first time.
@@ -399,7 +456,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
             String readFileString = "";
 
-            //contactsTagString = "";
+
             int charRead;
 
             while((charRead = reader.read(inputBuffer)) > 0){
@@ -410,9 +467,11 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
             Toast.makeText(getBaseContext(), "The file was loaded. File string is: "+readFileString, Toast.LENGTH_LONG).show();
             System.out.println("The file was loaded. ReadFile string is: "+readFileString);
 
+            //Something is wrong with the readFileString. Duplicated names are written to it. 2016-02-02
             if(readFileString.length()>0){//Check if there was anything stored in the file
-                String[] splitInTwo = readFileString.split("//¤");//This split is not working! Might be now after changing to //¤ from just ¤
-                contactsTagString = splitInTwo[0];
+                //String[] splitInTwo = readFileString.split("//¤");//This split is not working! Might be now after changing to //¤ from just ¤
+                //contactsTagString = splitInTwo[0];
+                contactsTagString = readFileString;
                 contactsTagString = contactsTagString.substring(1);
                 String[] allTags = contactsTagString.split(":");//These are now all tags for all pictures. If I remember correct.
 
@@ -424,9 +483,9 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
                     }
                 }
 
-                System.out.println("splitInTwo has length: "+splitInTwo.length);
+                /*System.out.println("splitInTwo has length: "+splitInTwo.length);
                 //System.out.println("SplitInTwoPosition1 = "+splitInTwo[1]);//This throws out of bounds
-                System.out.println("SplitInTwo[1] = "+splitInTwo[1]);
+                System.out.println("SplitInTwo[1] = "+splitInTwo[1]);//ArrayOutOfBoundsException!
                 if(splitInTwo.length>1){
                     nameUriPairs = splitInTwo[1];
                     Toast.makeText(getBaseContext(), "The file was loaded. nameUriPairs string is: "+nameUriPairs, Toast.LENGTH_LONG).show();
@@ -437,9 +496,10 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
                             String name = allNameUriPairs[i-1];
                             String uri = allNameUriPairs[i];
                             storeContactsUriFromName.put(name, uri);//I guess this one is for getting the uri to a contact based on its name. Should use LOOKUP_ID instead.
+
                         }
                     }
-                }
+                }*/
                 /*else {
                     nameUriPairs = "";
                 }*/
@@ -455,7 +515,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
                 OutputStreamWriter writer = new OutputStreamWriter(fileout);
                 writer.write("");
                 writer.close();
-                //contactsTagString = "";
+                //contactsTagString = ""; //This might need to be un-uncommented :P
                 //nameUriPairs = "";//Doubly initialized
                 System.out.println("The file wasn't found but created in the catch.");
             } catch(IOException e2){

@@ -12,7 +12,7 @@
         android:layout_alignParentBottom="true"
         android:id="@+id/gallery_button"
         android:text="To gallery"
-        android:onClick="clickButton1" />
+        android:onClick="clickGalleryButton" />
 
     <Button
         android:layout_width="wrap_content"
@@ -22,7 +22,7 @@
         android:id="@+id/tag_button"
         android:text="Tag contact"
         android:enabled="false"
-        android:onClick="clickButton2"/>
+        android:onClick="clickTagButton"/>
 
 
     <Button
@@ -33,7 +33,7 @@
         android:id="@+id/showtags_button"
         android:text="Show tags"
         android:enabled="false"
-        android:onClick="clickButton3"/>
+        android:onClick="clickShowTags"/>
 
     <com.example.anders.laboration2.PropImageView
         android:id="@+id/fullscreen_view"
