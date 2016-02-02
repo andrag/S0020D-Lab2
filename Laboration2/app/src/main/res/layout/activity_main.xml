@@ -1,0 +1,65 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
+    android:layout_height="match_parent" android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:paddingBottom="@dimen/activity_vertical_margin" tools:context=".MainActivity">
+
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:id="@+id/gallery_button"
+        android:text="To gallery"
+        android:onClick="clickButton1" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_toRightOf="@id/gallery_button"
+        android:id="@+id/tag_button"
+        android:text="Tag contact"
+        android:enabled="false"
+        android:onClick="clickButton2"/>
+
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_toRightOf="@id/tag_button"
+        android:id="@+id/showtags_button"
+        android:text="Show tags"
+        android:enabled="false"
+        android:onClick="clickButton3"/>
+
+    <com.example.anders.laboration2.PropImageView
+        android:id="@+id/fullscreen_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:adjustViewBounds="true"
+        />
+    
+    
+    <ListView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/tags_listttt"
+        android:layout_alignBottom="@id/fullscreen_view"
+        android:layout_alignTop="@+id/gallery_button"
+        android:scrollbars="vertical">
+    </ListView>
+
+    <ListView
+        android:layout_width="wrap_content"
+        android:layout_height="@dimen/abc_text_size_display_4_material"
+        android:id="@+id/tags_list"
+        android:layout_above="@+id/gallery_button"
+        android:layout_centerHorizontal="true" />
+
+
+</RelativeLayout>
