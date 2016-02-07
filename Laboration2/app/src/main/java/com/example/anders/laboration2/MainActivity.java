@@ -62,13 +62,18 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     private ConcurrentSkipListMap<String, String> contactsTags;
 
     private String contactsTagString;//A string representation of contactsTags for storing to file - "uri:name,ID,name,ID:uri:name,ID" etc.
+    private final String splitString = "splitstring";
 
-    private HashMap<String, String> namesAndIDsTaggedInCurrentPhoto;
+
+    private HashMap<String, String> namesAndIDsTaggedInCurrentPhoto;//Try change from ID string to uri
 
     //Tag list
     private ListView listview;
     private List<String> taggedInThisPhoto; //This is a list for storing names tagged in the selected photo
     private ArrayAdapter<String> arrayAdapter;
+
+
+
 
 
 
@@ -168,10 +173,59 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                //Toast.makeText(getBaseContext(), "You clicked: "+taggedInThisPhoto.get(position), Toast.LENGTH_LONG).show();
+                String contactID = namesAndIDsTaggedInCurrentPhoto.get(taggedInThisPhoto.get(position));
+                Toast.makeText(getBaseContext(), "You clicked: "+ contactID , Toast.LENGTH_LONG).show();
+
+                /*String name = null;
+                String number = null;
+                String email = null;*/
+
+                Cursor cursor = getContentResolver().query(Uri.parse(contactID), null, null, null, null);//Change to uri later
+                cursor.moveToFirst();//Move to first row?
+                int nameColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);//Select the name nameColumn
+                int numberColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER);
+                int emailColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.DISPLAY_NAME);
+
+
+                //Null-secure these things.
+                String name = cursor.getString(nameColumn);
+                String number = cursor.getString(numberColumn);
+                String email = cursor.getString(emailColumn);
+
+                cursor.close();
+
+                Toast.makeText(getBaseContext(), name + number + email, Toast.LENGTH_LONG).show();
+
+
                 //showDialog(taggedInThisPhoto.get(position));
-                createDialog(taggedInThisPhoto.get(position));
+                //createDialog(taggedInThisPhoto.get(position));
+
+
+                //Change the selections to get more details
+               /* Cursor cursor = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                        null,//new String[]{ContactsContract.CommonDataKinds.Phone.NUMBER},
+                        null, //ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ? AND " +
+                            //ContactsContract.CommonDataKinds.Phone.TYPE + " = " +
+                            //ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE,
+
+                        new String[]{contactID},
+                        null);
+                String contactNumber = "It did not work :P";
+                String email = null;
+
+                if(cursor.moveToFirst()){
+                    contactNumber = cursor.getString((cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)));
+                    //email = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.))
+                }
+
+                cursor.close();
+
+                Toast.makeText(getBaseContext(), contactNumber, Toast.LENGTH_LONG).show();
+*/
+
             }
+
+
         });
     }
 
@@ -287,7 +341,10 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
             String name = cursor.getString(nameColumn);
             String ID = cursor.getString(IDColumn);
 
-            newTag = name+";"+ID;
+            cursor.close();
+
+            //newTag = name+";"+ID;
+            newTag = name+";"+ contactUri;
 
             //contactPicked = cursor.getString(nameColumn);//Maybe remove the contactPicked variable?
 
@@ -338,7 +395,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         while(iterator.hasNext()){
             key = iterator.next();
             value = contactsTags.get(key);//Will this cause synch errors since trying to access while iterating??? Probably work since its only reading.
-            contactsTagString += ":" + key + ":"+value;
+            contactsTagString += splitString + key + splitString +value;
         }
     }
 
@@ -391,8 +448,8 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
             if(contactsTagString.length()>0){//Check if there was anything stored in the file
 
-                contactsTagString = contactsTagString.substring(1);
-                String[] allTags = contactsTagString.split(":");//Split the string. Even index are Uri:s, odd index are name;ID,name;ID etc
+                contactsTagString = contactsTagString.substring(9);
+                String[] allTags = contactsTagString.split(splitString);//Split the string. Even index are Uri:s, odd index are name;ID,name;ID etc
 
                 if(allTags.length>1){
                     for(int i  = 1; i < allTags.length;i = i+2){
