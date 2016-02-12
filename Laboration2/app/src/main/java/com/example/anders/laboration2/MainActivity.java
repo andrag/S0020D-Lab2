@@ -2,7 +2,10 @@ package com.example.anders.laboration2;
 
 
 
+import android.app.AlertDialog;
+import android.app.FragmentManager;
 import android.app.LoaderManager;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
@@ -72,7 +75,15 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     private List<String> taggedInThisPhoto; //This is a list for storing names tagged in the selected photo
     private ArrayAdapter<String> arrayAdapter;
 
+    private ArrayAdapter<String> detailsAdapter;
+    private AlertDialog.Builder dialogBuilder;
 
+
+
+    //Contact details list
+   /*private ListView detailsListView;
+    private List<String> detailsList;
+    public static ArrayAdapter<String> detailsAdapter;*/
 
 
 
@@ -89,13 +100,21 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
         contactsTags = new ConcurrentSkipListMap<String, String>();
         taggedInThisPhoto = new ArrayList<>();
-        namesAndIDsTaggedInCurrentPhoto = new HashMap<>();
-
         listview = (ListView) findViewById(R.id.tags_list);
 
-        System.out.println("Start the app!");
+        namesAndIDsTaggedInCurrentPhoto = new HashMap<>();
+
+        detailsAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1);
+        dialogBuilder = new AlertDialog.Builder(MainActivity.this);//Make this global?
+
+        /*detailsList = new ArrayList<>();
+        detailsListView = (ListView) findViewById(R.id.details_list);//This listview is in the wrong layout file*/
+
+
         loadFile();
         createListView();
+        createDetailsList();
+
     }
 
 
@@ -173,65 +192,153 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                String contactID = namesAndIDsTaggedInCurrentPhoto.get(taggedInThisPhoto.get(position));
-                Toast.makeText(getBaseContext(), "You clicked: "+ contactID , Toast.LENGTH_LONG).show();
-
-                /*String name = null;
-                String number = null;
-                String email = null;*/
-
-                Cursor cursor = getContentResolver().query(Uri.parse(contactID), null, null, null, null);//Change to uri later
-                cursor.moveToFirst();//Move to first row?
-                int nameColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);//Select the name nameColumn
-                int numberColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER);
-                int emailColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.DISPLAY_NAME);
-
-
-                //Null-secure these things.
-                String name = cursor.getString(nameColumn);
-                String number = cursor.getString(numberColumn);
-                String email = cursor.getString(emailColumn);
-
-                cursor.close();
-
-                Toast.makeText(getBaseContext(), name + number + email, Toast.LENGTH_LONG).show();
-
-
-                //showDialog(taggedInThisPhoto.get(position));
-                //createDialog(taggedInThisPhoto.get(position));
-
-
-                //Change the selections to get more details
-               /* Cursor cursor = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                        null,//new String[]{ContactsContract.CommonDataKinds.Phone.NUMBER},
-                        null, //ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ? AND " +
-                            //ContactsContract.CommonDataKinds.Phone.TYPE + " = " +
-                            //ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE,
-
-                        new String[]{contactID},
-                        null);
-                String contactNumber = "It did not work :P";
-                String email = null;
-
-                if(cursor.moveToFirst()){
-                    contactNumber = cursor.getString((cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)));
-                    //email = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.))
-                }
-
-                cursor.close();
-
-                Toast.makeText(getBaseContext(), contactNumber, Toast.LENGTH_LONG).show();
-*/
-
+                String contactUri = namesAndIDsTaggedInCurrentPhoto.get(taggedInThisPhoto.get(position));
+                getDetails(Uri.parse(contactUri));
             }
-
-
         });
     }
 
-    private void showDialog(String name){
 
+    //Maybe should reuse the dialog.
+    private void createDetailsList(){
+
+        dialogBuilder.setNegativeButton("Close", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+
+        dialogBuilder.setAdapter(detailsAdapter, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
     }
+
+
+    private void getDetails(Uri contactUri){
+        Toast.makeText(getBaseContext(),"Contact uri: " + contactUri.toString(), Toast.LENGTH_LONG).show();
+        Cursor cursor = getContentResolver().query(contactUri, null, null, null, null);//Change to uri later
+        cursor.moveToFirst();//Move to first row?
+        int nameColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);//Select the name nameColumn
+        int numberColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER);
+        int emailColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA);
+
+        int IDColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.LOOKUP_KEY);
+        //Toast.makeText(getBaseContext(),IDColumn,Toast.LENGTH_LONG).show();
+
+        String id = contactUri.getLastPathSegment();//cursor.getString(IDColumn);
+        String email2 = null;
+
+        //Try yet another code for email... Didn't work either. Need to understand this more deeply.
+        /*Cursor emailCursor = getContentResolver().query(ContactsContract.CommonDataKinds.Email.CONTENT_URI,
+                null,
+                ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?",
+                new String[]{id}, null);
+
+        if(emailCursor.getCount() > 0){
+        while(emailCursor.moveToNext()){
+            String phone = emailCursor.getString(emailCursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA));
+            int type = emailCursor.getInt(emailCursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.TYPE));
+            String s = (String) ContactsContract.CommonDataKinds.Email.getTypeLabel(getResources(), type, "");
+            Toast.makeText(getBaseContext(),phone,Toast.LENGTH_LONG).show();
+        }} else {Toast.makeText(getBaseContext(), "The emailCursor returned empty", Toast.LENGTH_LONG).show();}
+
+        emailCursor.close();*/
+
+
+        //The code below doesn't work for email.
+        //ArrayList<ContactInfo> listContactsData = new ArrayList<>();
+        // Retrieve Email address
+        /*Cursor emailCursor = getContentResolver().query(
+                ContactsContract.CommonDataKinds.Email.CONTENT_URI,
+                null,
+                ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?",//This is the selection clause. When it is set to ?, the first argument of the selectionArgs is used instead. In this case the id.
+                new String[]{id}, null);//This id might be taken from the wrong table.
+        while (emailCursor.moveToNext()) {
+            // This would allow you get email addresses
+
+            String email2 = emailCursor.getString(emailCursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA));
+            String emailType = emailCursor.getString(emailCursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.TYPE));
+            Toast.makeText(getBaseContext(), email2, Toast.LENGTH_SHORT).show();
+            //Log.e(“Email :“,” ”+email)
+
+            //objContact.strEmail = email;
+        }
+        emailCursor.close();*/
+
+        //listContactsData.add(objContact);
+
+
+
+        //The code below didn't work
+        /*
+        Cursor emailCur = getContentResolver().query(
+                ContactsContract.CommonDataKinds.Email.CONTENT_URI,
+                null,
+                ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?",
+                new String[]{id}, null);
+
+        String email2 = "Ingen email nu heller.";
+        while (emailCur.moveToNext()) {
+            // This would allow you get several email addresses
+            // if the email addresses were stored in an array
+            email2 = emailCur.getString(
+                    emailCur.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA));
+            String emailType = emailCur.getString(
+                    emailCur.getColumnIndex(ContactsContract.CommonDataKinds.Email.TYPE));
+        }
+        emailCur.close();*/
+
+
+        //The code below didn't work
+        /*Cursor emailCursor = getContentResolver().query(ContactsContract.CommonDataKinds.Email.CONTENT_URI, null, ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?", new String[]{id}, null);
+        String email2 = "Ingen email";
+        if(emailCursor.moveToFirst()){
+            email2 = emailCursor.getString(emailCursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA));
+
+        }
+        emailCursor.close();*/
+
+        //Toast.makeText(getBaseContext(), email2, Toast.LENGTH_LONG).show();
+
+
+
+        //Get all relevant details
+        String name = cursor.getString(nameColumn);
+        String number = cursor.getString(numberColumn);
+        String email = cursor.getString(emailColumn);
+
+        detailsAdapter.clear();
+        if (name != null) {
+            detailsAdapter.add(name);
+        }
+        if (number != null) {
+            detailsAdapter.add(number);
+        }
+        if (email != null) {
+            detailsAdapter.add(email);
+        }
+        cursor.close();
+
+        showDetails(name);
+    }
+
+
+    private void showDetails(String name){
+        String contactName = "Details for: Contact name missing";
+        if(name != null){
+            contactName = "Details for: " + name;
+        }
+        //AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(MainActivity.this);//Make this global?
+
+        dialogBuilder.setTitle(contactName);
+        dialogBuilder.show();
+    }
+
+
 
     private void createDialog(String name){
         /*  Call this method from the Contacts ListViews onClick-method. Add the uri as an argument.
@@ -448,7 +555,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
             if(contactsTagString.length()>0){//Check if there was anything stored in the file
 
-                contactsTagString = contactsTagString.substring(9);
+                contactsTagString = contactsTagString.substring(11);
                 String[] allTags = contactsTagString.split(splitString);//Split the string. Even index are Uri:s, odd index are name;ID,name;ID etc
 
                 if(allTags.length>1){
