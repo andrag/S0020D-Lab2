@@ -13,6 +13,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.BaseColumns;
 import android.provider.ContactsContract;
 import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
@@ -79,6 +80,9 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     private AlertDialog.Builder dialogBuilder;
 
 
+    private ContactLoaderClass contactLoader;
+    private HashMap<String, ContactObject> contactObjectsTaggedInCurrentPhoto; //Should replace namesAndIDsTaggedInCurrentPhoto
+
 
     //Contact details list
    /*private ListView detailsListView;
@@ -110,10 +114,15 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         /*detailsList = new ArrayList<>();
         detailsListView = (ListView) findViewById(R.id.details_list);//This listview is in the wrong layout file*/
 
+        contactLoader = new ContactLoaderClass(this);
+        contactObjectsTaggedInCurrentPhoto = new HashMap<>();
+
 
         loadFile();
         createListView();
         createDetailsList();
+
+
 
     }
 
@@ -122,6 +131,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     public void clickGalleryButton(View view){
         //Start the gridView activity
         namesAndIDsTaggedInCurrentPhoto.clear();
+        contactObjectsTaggedInCurrentPhoto.clear();
         taggedInThisPhoto.clear();
         arrayAdapter.notifyDataSetChanged();
         Intent intent = new Intent(this, GridViewActivity.class);
@@ -132,11 +142,12 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     //This button starts the contact picking activity.
     public void clickTagButton(View view){
         namesAndIDsTaggedInCurrentPhoto.clear();
+        contactObjectsTaggedInCurrentPhoto.clear();
         taggedInThisPhoto.clear();
         arrayAdapter.notifyDataSetChanged();
 
         Intent pickContactIntent = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI); //Tidigare argument nr 2: Uri.parse("content://contacts"
-        pickContactIntent.setType(ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE);//Show only contacts with phone numbers!
+        //pickContactIntent.setType(ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE);//Show only contacts with phone numbers!
         startActivityForResult(pickContactIntent, PICK_CONTACT_REQUEST);//What result do I get here? Name? Number? Contact?
     }
 
@@ -147,6 +158,27 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
     private void loadTagsFromString(){
         if(contactsTags.containsKey(currentPhotoUri)){
+            //The photo has id tags
+            String ids = contactsTags.get(currentPhotoUri);//Get all ids for contacts tagged in this photo
+            //ids.substring(1); //Don't think there is a need for substringing
+            String[] idArray = ids.split(",");
+            for(String id : idArray){
+                ContactObject contact = contactLoader.getContact(id);
+                String name = contact.getName();
+                contactObjectsTaggedInCurrentPhoto.put(name, contact);
+                taggedInThisPhoto.add(name);
+            }
+            arrayAdapter.notifyDataSetChanged();
+
+        }
+        else{
+            Toast.makeText(getBaseContext(), "No tags yet", Toast.LENGTH_LONG).show();
+        }
+
+
+        //This code was used for coupling the ids and names to the listview before the use of contacts objects
+
+        /*if(contactsTags.containsKey(currentPhotoUri)){
             //Syntax of the names/ID-string: ,name;ID,name;ID,name;ID
             String namesAndIds = contactsTags.get(currentPhotoUri);
             namesAndIds.substring(1);//Trim the first ",". What happens when we only have one tag?
@@ -167,7 +199,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
         } else{
             Toast.makeText(getBaseContext(), "This photo has no tags yet.", Toast.LENGTH_LONG).show();
-        }
+        }*/
     }
 
 
@@ -175,12 +207,12 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     //This used to get called from showTagsOnClick before we had IDs involved. 2016-02-04
     private void updateTaggedContacts(String name){
         //String name format: ,name,name,name....etc Might need to trim the first ","
-        System.out.println("Trying to update the listview with tags. The name string is: "+name);
+        System.out.println("Trying to update the listview with tags. The name string is: " + name);
         String[] names = name.split(",");//This throws a nullpointer exception when no file exists to read from from the start!
         taggedInThisPhoto.clear();
-        for(String s : names){
+        /*for(String s : names){
             taggedInThisPhoto.add(s);
-        }
+        }*/
         arrayAdapter.notifyDataSetChanged();
 
     }
@@ -192,10 +224,26 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                //String contactUri = namesAndIDsTaggedInCurrentPhoto.get(taggedInThisPhoto.get(position));
+                ContactObject contact = contactObjectsTaggedInCurrentPhoto.get(taggedInThisPhoto.get(position));//Get the contact object from the clicked name(What if names are same? Store as problem for discussion
+                getDetails(contact);
+            }
+        });
+
+
+
+
+        //Old code before ContactsObjects
+        /*System.out.println("Creating the listview and set an adapter to it.");
+        arrayAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, taggedInThisPhoto);
+        listview.setAdapter(arrayAdapter);
+        listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 String contactUri = namesAndIDsTaggedInCurrentPhoto.get(taggedInThisPhoto.get(position));
                 getDetails(Uri.parse(contactUri));
             }
-        });
+        });*/
     }
 
 
@@ -218,8 +266,33 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     }
 
 
-    private void getDetails(Uri contactUri){
-        Toast.makeText(getBaseContext(),"Contact uri: " + contactUri.toString(), Toast.LENGTH_LONG).show();
+    private void getDetails(ContactObject contact){//Uri contactUri){
+        Toast.makeText(getBaseContext(), "getDetails is not implemented yet.", Toast.LENGTH_LONG).show();
+
+        String name = contact.getName();
+        ArrayList<String> phoneNumbers = contact.getPhoneNumbers();
+        ArrayList<String> emails = contact.getEmails();
+
+        detailsAdapter.clear();
+
+        if (name != null) {
+            detailsAdapter.add(name);
+        }
+        if (phoneNumbers.size() > 0) {//How to do this check?
+            for(String s : phoneNumbers){
+                detailsAdapter.add(s);
+            }
+        }
+        if (emails.size() > 0) {
+            for(String s : emails){
+                detailsAdapter.add(s);
+            }
+        }
+
+        showDetails(name);
+
+        //Old code before ContactObject
+        /*Toast.makeText(getBaseContext(),"Contact uri: " + contactUri.toString(), Toast.LENGTH_LONG).show();
         Cursor cursor = getContentResolver().query(contactUri, null, null, null, null);//Change to uri later
         cursor.moveToFirst();//Move to first row?
         int nameColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);//Select the name nameColumn
@@ -231,79 +304,6 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
         String id = contactUri.getLastPathSegment();//cursor.getString(IDColumn);
         String email2 = null;
-
-        //Try yet another code for email... Didn't work either. Need to understand this more deeply.
-        /*Cursor emailCursor = getContentResolver().query(ContactsContract.CommonDataKinds.Email.CONTENT_URI,
-                null,
-                ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?",
-                new String[]{id}, null);
-
-        if(emailCursor.getCount() > 0){
-        while(emailCursor.moveToNext()){
-            String phone = emailCursor.getString(emailCursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA));
-            int type = emailCursor.getInt(emailCursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.TYPE));
-            String s = (String) ContactsContract.CommonDataKinds.Email.getTypeLabel(getResources(), type, "");
-            Toast.makeText(getBaseContext(),phone,Toast.LENGTH_LONG).show();
-        }} else {Toast.makeText(getBaseContext(), "The emailCursor returned empty", Toast.LENGTH_LONG).show();}
-
-        emailCursor.close();*/
-
-
-        //The code below doesn't work for email.
-        //ArrayList<ContactInfo> listContactsData = new ArrayList<>();
-        // Retrieve Email address
-        /*Cursor emailCursor = getContentResolver().query(
-                ContactsContract.CommonDataKinds.Email.CONTENT_URI,
-                null,
-                ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?",//This is the selection clause. When it is set to ?, the first argument of the selectionArgs is used instead. In this case the id.
-                new String[]{id}, null);//This id might be taken from the wrong table.
-        while (emailCursor.moveToNext()) {
-            // This would allow you get email addresses
-
-            String email2 = emailCursor.getString(emailCursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA));
-            String emailType = emailCursor.getString(emailCursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.TYPE));
-            Toast.makeText(getBaseContext(), email2, Toast.LENGTH_SHORT).show();
-            //Log.e(“Email :“,” ”+email)
-
-            //objContact.strEmail = email;
-        }
-        emailCursor.close();*/
-
-        //listContactsData.add(objContact);
-
-
-
-        //The code below didn't work
-        /*
-        Cursor emailCur = getContentResolver().query(
-                ContactsContract.CommonDataKinds.Email.CONTENT_URI,
-                null,
-                ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?",
-                new String[]{id}, null);
-
-        String email2 = "Ingen email nu heller.";
-        while (emailCur.moveToNext()) {
-            // This would allow you get several email addresses
-            // if the email addresses were stored in an array
-            email2 = emailCur.getString(
-                    emailCur.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA));
-            String emailType = emailCur.getString(
-                    emailCur.getColumnIndex(ContactsContract.CommonDataKinds.Email.TYPE));
-        }
-        emailCur.close();*/
-
-
-        //The code below didn't work
-        /*Cursor emailCursor = getContentResolver().query(ContactsContract.CommonDataKinds.Email.CONTENT_URI, null, ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?", new String[]{id}, null);
-        String email2 = "Ingen email";
-        if(emailCursor.moveToFirst()){
-            email2 = emailCursor.getString(emailCursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA));
-
-        }
-        emailCursor.close();*/
-
-        //Toast.makeText(getBaseContext(), email2, Toast.LENGTH_LONG).show();
-
 
 
         //Get all relevant details
@@ -321,9 +321,9 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         if (email != null) {
             detailsAdapter.add(email);
         }
-        cursor.close();
+        cursor.close();*/
 
-        showDetails(name);
+        //showDetails(name);
     }
 
 
@@ -445,18 +445,21 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
             cursor.moveToFirst();//Move to first row?
             int nameColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);//Select the name nameColumn
             int IDColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone._ID);
+            String id2 = cursor.getString(cursor.getColumnIndex(BaseColumns._ID));
             String name = cursor.getString(nameColumn);
-            String ID = cursor.getString(IDColumn);
+
+
+            String id = cursor.getString(IDColumn);//This is what I want!
 
             cursor.close();
 
-            //newTag = name+";"+ID;
-            newTag = name+";"+ contactUri;
+            //newTag = name+";"+ID;//It should be enough with only ID... Maybe keep for now.
+            //newTag = name+";"+ contactUri;
 
             //contactPicked = cursor.getString(nameColumn);//Maybe remove the contactPicked variable?
 
-            if(!isDuplicate(currentPhotoUri.toString(), newTag)){
-                addNewTag(newTag, currentPhotoUri);//Include write to file in this method
+            if(!isDuplicate(currentPhotoUri.toString(), id)){
+                addNewTag(id, currentPhotoUri);//Include write to file in this method
                 updateTagsString();
                 writeToFile();
             }
@@ -466,13 +469,13 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
 
     //Can this be done by checking contactsTags HashMap instead of contactsTagString? Made a try :)
-    private boolean isDuplicate(String uri, String nameAndID){
+    private boolean isDuplicate(String uri, String id){//Only id
         boolean response = false;
         if(contactsTags.containsKey(uri)){
             String tagsToExamine = contactsTags.get(uri);
             String[] taggedInImage = tagsToExamine.split(",");//This makes it necessary to have yet another split symbol: uri:name;ID;name;ID:uri:
             for(String s : taggedInImage){
-                if(s.equals(nameAndID)){
+                if(s.equals(id)){
                     return true;
                 }
             }
@@ -481,14 +484,14 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     }
 
     private void addNewTag(String tag, String uri){
-        String tagAndIDsOfThisPhoto = tag; //Only if the photo has no existing tags since before
+        String idsInThisPhoto = tag; //Only if the photo has no existing tags since before
         if(contactsTags.containsKey(uri)){
-            tagAndIDsOfThisPhoto = contactsTags.get(uri);
-            tagAndIDsOfThisPhoto += ","+tag;
+            idsInThisPhoto = contactsTags.get(uri);//Only ids used now (2016-02-12)
+            idsInThisPhoto += ","+tag;
             contactsTags.remove(uri);
         }
         //tagAndIDsOfThisPhoto = tagAndIDsOfThisPhoto;
-        contactsTags.put(uri, tagAndIDsOfThisPhoto);
+        contactsTags.put(uri, idsInThisPhoto);
 
     }
 
@@ -500,9 +503,9 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         contactsTagString = "";
         Iterator<String> iterator = contactsTags.keySet().iterator();
         while(iterator.hasNext()){
-            key = iterator.next();
-            value = contactsTags.get(key);//Will this cause synch errors since trying to access while iterating??? Probably work since its only reading.
-            contactsTagString += splitString + key + splitString +value;
+            key = iterator.next();//key = photoUri
+            value = contactsTags.get(key);//value = id,id,id etc
+            contactsTagString += splitString + key + splitString +value;//Use splitstring intead of : since : is used in the uri
         }
     }
 
@@ -528,6 +531,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
 
     //Might need a check if the file exists before loading it.
+    //Fix so that only contacts that exists are loaded
     private void loadFile(){
         final int READ_BLOCK_SIZE = 100;//Check what this is for
         //contactsTags = new ConcurrentSkipListMap<String, String>();
@@ -561,8 +565,8 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
                 if(allTags.length>1){
                     for(int i  = 1; i < allTags.length;i = i+2){
                         String uri = allTags[i-1];
-                        String nameAndIDs = allTags[i];
-                        contactsTags.put(uri, nameAndIDs);//Map all photo uri:s to the names and IDs of contacts tagged in them
+                        String ids = allTags[i];
+                        contactsTags.put(uri, ids);//Map all photo uri:s to the names and IDs of contacts tagged in them
                     }
                 }
             }
