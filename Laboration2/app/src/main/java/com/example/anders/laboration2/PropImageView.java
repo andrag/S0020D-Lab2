@@ -7,8 +7,8 @@ import android.widget.ImageView;
 
 /**
  * Created by Anders on 2015-07-16.
- * Denna view är meningen att vara fullscreen. Den är inte det.
- * Source at http://www.ryadel.com/2015/02/21/android-proportionally-stretch-imageview-fit-whole-screen-width-maintaining-aspect-ratio/
+ * This view is for fullscreen mode.
+ *
  */
 public class PropImageView extends ImageView {
 
@@ -26,7 +26,7 @@ public class PropImageView extends ImageView {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        //Få tag i bilden här
+        //Fï¿½ tag i bilden hï¿½r
         Drawable d = getDrawable();
         if(d != null){
             int w = MeasureSpec.getSize(widthMeasureSpec);

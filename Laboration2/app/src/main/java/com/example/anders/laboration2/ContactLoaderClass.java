@@ -13,10 +13,13 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-/**
- * Created by Anders on 2016-02-12.
+/* A class for
+    1. Loading the information of all contacts into ContactObjects
+    2. Providing MainActivity with these ContactObjects when it searches for contacts with specific IDs
  */
-public class ContactLoaderClass {//implements LoaderManager.LoaderCallbacks<Cursor> {
+
+
+public class ContactLoaderClass {
 
     private ConcurrentSkipListMap<String, ContactObject> allContacts;
     Context context;
@@ -41,21 +44,6 @@ public class ContactLoaderClass {//implements LoaderManager.LoaderCallbacks<Curs
         return allContacts.get(id);
     }
 
-/*
-    @Override
-    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        return null;
-    }
-
-    @Override
-    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-
-    }
-
-    @Override
-    public void onLoaderReset(Loader<Cursor> loader) {
-
-    }*/
 
     public void loadAllContacts(){
 
@@ -78,6 +66,27 @@ public class ContactLoaderClass {//implements LoaderManager.LoaderCallbacks<Curs
             String id = contactsCursor.getString(contactsCursor.getColumnIndex(BaseColumns._ID)); //The unique ID of a row. Cursor index -1!?
             String contactName = contactsCursor.getString(contactsCursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
 
+
+                Cursor phoneCursor = context.getContentResolver().query(
+                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                        null,
+                        ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                        new String[]{id},
+                        null
+                );
+
+                if(phoneCursor.getCount() > 0){
+
+                    while(phoneCursor.moveToNext()){
+
+                        String phone = phoneCursor.getString(phoneCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+                        phoneNumbers.add(phone);
+                    }
+                }
+                phoneCursor.close();
+                
+
+
             //Make a query for the phone numbers
             context.getContentResolver().query(
                     ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
@@ -86,7 +95,6 @@ public class ContactLoaderClass {//implements LoaderManager.LoaderCallbacks<Curs
                     new String[]{id},                                           //Using the contacts id for lookup
                     null);
 
-            //Skip the phone number for now
 
 
             Cursor emailCursor = context.getContentResolver().query(
