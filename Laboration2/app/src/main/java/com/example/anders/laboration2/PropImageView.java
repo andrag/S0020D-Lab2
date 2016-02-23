@@ -26,7 +26,6 @@ public class PropImageView extends ImageView {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        //F� tag i bilden h�r
         Drawable d = getDrawable();
         if(d != null){
             int w = MeasureSpec.getSize(widthMeasureSpec);

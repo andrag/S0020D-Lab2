@@ -38,21 +38,12 @@
     <com.example.anders.laboration2.PropImageView
         android:id="@+id/fullscreen_view"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_alignParentTop="true"
+        android:layout_above="@+id/tags_list"
         android:layout_centerHorizontal="true"
         android:adjustViewBounds="true"
         />
-    
-    
-    <!--<ListView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:id="@+id/tags_listttt"
-        android:layout_alignBottom="@id/fullscreen_view"
-        android:layout_alignTop="@+id/gallery_button"
-        android:scrollbars="vertical">
-    </ListView>-->
 
     <ListView
         android:layout_width="wrap_content"
@@ -60,21 +51,6 @@
         android:id="@+id/tags_list"
         android:layout_above="@+id/gallery_button"
         android:layout_centerHorizontal="true" />
-
-    <!--<ListView
-        android:layout_width="wrap_content"
-        android:layout_height="112sp"
-        android:id="@+id/details_list"
-        />-->
-
-    <!--<fragment
-        android:name="com.example.anders.laboration2.ContactDialog"
-        android:id="@+id/details_fragment"
-        android:layout_height="112sp"
-        android:layout_width="wrap_content"
-        />-->
-
-
 
 
 

@@ -56,7 +56,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     //Data structures and storage
     private String currentPhotoUri;//Uri to the photo currently selected
     private String filename = "contact_tags.txt";// For storing tags
-    private String contactsTagString;//A string representation of contactsTags for storing to file - "uri:name,ID,name,ID:uri:name,ID" etc.
+    private String contactsTagString;//A string representation of contactsTags for storing to file - "uri splitstring ID,ID splitstring uri splitstring ID, ID, ID etc.
     //For storing photo uri:s and link them to the names and id:s of the contacts tagged in them
     //Key: Photo uri - Value: "name,ID,name,ID" etc
     private ConcurrentSkipListMap<String, String> contactsTags;
@@ -82,6 +82,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         setContentView(R.layout.activity_main);
 
         fullscreenImg = (PropImageView) findViewById(R.id.fullscreen_view);
+
         galleryButton = (Button) findViewById(R.id.gallery_button);
         tagButton = (Button) findViewById(R.id.tag_button);
         showTagsButton = (Button) findViewById(R.id.showtags_button);
@@ -217,9 +218,6 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
         detailsAdapter.clear();
 
-        /*if (name != null) {
-            detailsAdapter.add(name);
-        }*/
         if (phoneNumbers.size() > 0) {
             for(String s : phoneNumbers){
                 detailsAdapter.add(s);

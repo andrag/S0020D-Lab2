@@ -84,7 +84,7 @@ public class ContactLoaderClass {
                     }
                 }
                 phoneCursor.close();
-                
+
 
 
             //Make a query for the phone numbers
